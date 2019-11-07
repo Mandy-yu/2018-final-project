@@ -1,21 +1,45 @@
 # 2019-final-project
 
 ## Section 1: Description
-RNA has intrinsic propensity to form base pairs, leading to complex intramolecular and intermolecular helices. Direct measurement of base pairing interactions in living celss is critical to solve transcriptome structure and interactions, and investigating their function. Toward this goal, we developed an experimental method, PARIS(Psoralen Analysis of RNA Interactions and Structures) to directly determine transcriptome-wide base paring interactions (Lu et al., Cell 165(5):1267-1279,2016). This time, I plan to analyze one set of PARIS data from one sample of HEK293 cells, to see the global mapping of RNA duplexes in living cells, including extensive long-range structures, higher-order architectures, alternative structures, and RNA-RNA interactions. 
+Lung Cancer Is the Biggest Cancer Killer in Both Men and Women. Every year, about 200,000 people are diagnosed and 150,000 people die. 
+Adenomas and adenocarcinomas is the most commom type of lung cancer nowadays. I want to know how genes express differently between Adenomas and adenocarcinomas lung cancer tissues and normal lung tissues. So I plan to do a typical RNA-sequencing analysis about **lung cancer (Adenomas and adenocarcinomas)** following steps as below, with the results obtained informing future experiments and validation studies, using three popular packages from Bioconductor as mentioned in the article. https://www.bioconductor.org/packages/devel/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html#data-packaging
+
 ## Section 2: Datasets
-This data is from our lab, produced on 05/25/2019. It is sequenced on Illumina miseq using standard conditions and the P6_Custom_seqPrimer. Sequencing data are RNA-seq, and provided in zipped fastq files.
+TCGA dataset (30 primary tumor RNA-seq files vs 30 solid tissue normal RNA-seq files)
+Exporation:
+Primary Site: bronchus and lung
+Disease Type: adenomas and adenocarcinomas
+Experimental Strategy: RNA-Seq
+Sample Type: primary tumor/solid tissue normal
+_View files in respository_
+Respository:
+Data Category: transcriptome profiling
+Data Type: Gene Expression Quantification
+Workflow Type: HTSeq-Counts
+Primary tumor: https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22content%22%3A%7B%22field%22%3A%22cases.case_id%22%2C%22value%22%3A%5B%22set_id%3AAW5D0bRk3lRTKaHL2A6c%22%5D%7D%2C%22op%22%3A%22IN%22%7D%2C%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.analysis.workflow_type%22%2C%22value%22%3A%5B%22HTSeq%20-%20Counts%22%5D%7D%7D%2C%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.experimental_strategy%22%2C%22value%22%3A%5B%22RNA-Seq%22%5D%7D%7D%5D%7D
+solid tissue normal: https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22content%22%3A%7B%22field%22%3A%22cases.case_id%22%2C%22value%22%3A%5B%22set_id%3AAW5D1nGdLao0-TEkdbYN%22%5D%7D%2C%22op%22%3A%22IN%22%7D%2C%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.analysis.workflow_type%22%2C%22value%22%3A%5B%22HTSeq%20-%20Counts%22%5D%7D%7D%2C%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.experimental_strategy%22%2C%22value%22%3A%5B%22RNA-Seq%22%5D%7D%7D%5D%7D
+The 30 front files listed are all open, so I downloaded them as input seperately.
+
 ## Proposed Analysis
-1, Remove the adapter sequences (using Trimmomatic)
-2, Remove the duplicates (from the icSHAPE pipeline)
-3, Split the trimmed and collapsed libraries using splitFastqLibrary
-4, Remove random and multiplexing barcodes (using Trimmomatic)
-5, Generate reference index 
-6, Map reads to a genome index of choice using STAR
-7, Convert SAM to BAM format, sort the BAM file and extract primary mapped reads using SAMtools
-8, Extract gapped reads from the Aligned.out_sorted.bam file
+### 1, Data packaging: 
+download 30 primary adenomas and adenocarcinomas lung tumor RNA-seq files and 30 solid tissue normal RNA-seq files available online from dataset above, combine them into a matrix of counts using **edgeR**, then converted into a DGEList-object using the DGEList function.
+Retrieve the second data frame named genes in the DGEList-object using organism specific packages **Homo.sapiens** (Bioconductor Core Team 2016a) for human.
+The ensembl gene names available in our dataset were annotated using the Homo.sapiens package to retrieve associated gene symbols and chromosome information.
+### 2, Data pre-processing: 
+Raw counts are converted to CPM and log-CPM values using the cpm function in edgeR. The filterByExpr function in the edgeR package provides an automatic way to filter genes, while keeping as many genes as possible with worthwhile counts.
+Normalisation by the method of trimmed mean of M-values (TMM) (Robinson and Oshlack 2010) is performed using the calcNormFactors function in **edgeR**.
+The multi-dimensional scaling (MDS) plot can be made in limma using the plotMDS function. Alternatively, the **Glimma** package offers the convenience of an interactive MDS plot where multiple dimensions can be explored. 
+### 3, Differential expression testing:
+Create a design matrix and contrasts. Contrasts for pairwise comparisons between cell populations are set up in **limma** using the makeContrasts function. 
+Genes that are DE in multiple comparisons can be extracted using the results from decideTests.
+Produce an interactive display which allows the user to search for particular genes based on the annotation provided, by **Glimma** showing results for all genes visually, mean-difference plots, which display log-FCs from the linear model fit against the average log-CPM values (mean-difference plot).
+A heatmap is created for the top 100 DE genes (as ranked by adjusted p-value) from the basal versus LP contrast using the heatmap.2 function from the **gplots** package.
+
 ## Proposed Timeline & Major milestones (or segments)
-Milestone 1(11/13/19): Finish proposed step 1-3
-Milestone 2(11/20/19): Finish proposed step 4-6
-Milestone 3(11/27/19): Finish proposed step 7-8, write summary of results (different type of RNA duplexes)
+Milestone 1(11/13/19): Finish proposed step 1
+Milestone 2(11/20/19): Finish proposed step 2
+Milestone 3(11/27/19): Finish proposed step 3, summarize results 
+
 ## User Interface
-? Make a R? 
+ https://www.bioconductor.org/packages/devel/workflows/vignettes/RNAseq123/inst/doc/glimma-plots/MD-Plot.html
+
