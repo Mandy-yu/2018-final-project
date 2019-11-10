@@ -6,3 +6,9 @@ awk -F '\t' -v OFS='\t' '{sub(/\.[0-9]*/, "", $1)} 1' lungcancer2 > lungcancer2.
 
 Rhen deal with them in R notebook
 R notebook product is in the webset: file:///Users/ycq/final.nb.html
+
+next week step:
+2, Data pre-processing:
+Raw counts are converted to CPM and log-CPM values using the cpm function in edgeR. The filterByExpr function in the edgeR package provides an automatic way to filter genes, while keeping as many genes as possible with worthwhile counts.
+Normalisation by the method of trimmed mean of M-values (TMM) (Robinson and Oshlack 2010) is performed using the calcNormFactors function in edgeR .
+The multi-dimensional scaling (MDS) plot can be made in limma using the plotMDS function. Alternatively, the Glimma package offers the convenience of an interactive MDS plot where multiple dimensions can be explored.
