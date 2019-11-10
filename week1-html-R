@@ -1,1 +1,8 @@
-file:///Users/ycq/final.nb.html
+First, I downloaded dataset from CTGA as proposal said, gunziped them, and renamed gene Essemble name in bash command as follow one by one:
+
+awk -F '\t' -v OFS='\t' '{sub(/\.[0-9]*/, "", $1)} 1' lungcancer1 > lungcancer1.txt
+awk -F '\t' -v OFS='\t' '{sub(/\.[0-9]*/, "", $1)} 1' lungcancer2 > lungcancer2.txt
+...
+
+Rhen deal with them in R notebook
+R notebook product is in the webset: file:///Users/ycq/final.nb.html
