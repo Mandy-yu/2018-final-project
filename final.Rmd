@@ -3,7 +3,7 @@ title: "Final project---RNA-seq analysis with limma"
 output: html_notebook
 ---
 
-1 Set-up
+# 1 Set-up
 ```{r}
 library(limma)
 library(Glimma)
@@ -11,8 +11,8 @@ library(edgeR)
 library(Homo.sapiens)
 ```
 
-2 Dta packaging
-# Combined into a matrix of counts using the readDGE function
+# 2 Dta packaging
+# 2.1 Combined into a matrix of counts using the readDGE function
 # Phenotype (disease status)/"lung cancer or nomral tissue" be associated with the columns of the counts matrix
 ```{r}
 files <- c("lungcancer1.txt", "lungcancer2.txt", "lungcancer3.txt", "lungcancer4.txt", "lungcancer5.txt","lungcancer6.txt", "lungcancer7.txt", "lungcancer8.txt", "lungcancer9.txt", "lungcancer10.txt", "lungcancer11.txt", "lungcancer12.txt", "lungcancer13.txt", "lungcancer14.txt", "lungcancer15.txt", "lungcancer16.txt", "lungcancer17.txt", "lungcancer18.txt", "lungcancer19.txt", "lungcancer20.txt", "lungcancer21.txt", "lungcancer22.txt", "lungcancer23.txt", "lungcancer24.txt", "lungcancer25.txt", "lungcancer26.txt", "lungcancer27.txt", "lungcancer28.txt", "lungcancer29.txt", "lungcancer30.txt", "normal1.txt", "normal2.txt", "normal3.txt", "normal4.txt", "normal5.txt", "normal6.txt", "normal7.txt", "normal8.txt", "normal9.txt", "normal10.txt", "normal11.txt", "normal12.txt", "normal13.txt", "normal14.txt", "normal15.txt", "normal16.txt", "normal17.txt", "normal18.txt", "normal19.txt", "normal20.txt", "normal21.txt", "normal22.txt", "normal23.txt", "normal24.txt", "normal25.txt", "normal26.txt", "normal27.txt", "normal28.txt", "normal29.txt", "normal30.txt")
@@ -24,7 +24,7 @@ group <- as.factor(rep(c("lungcancer", "normal"), c(30, 30)))
 x$samples$group <- group
 x$samples
 ```
-# Organising gene annotations
+# 2.2 Organising gene annotations
 # Retrieve a second data frame named genes in the DGEList-object to store gene-level information associated with rows of the counts matrix using Homo.sapiens package.
 ```{r}
 geneid <- rownames(x)
@@ -35,5 +35,116 @@ genes <- genes[!duplicated(genes$ENSEMBL),]
 x$genes <- genes
 x
 ```
+# 3 Dta pre-processing
+# 3.1 Transformations from the raw-scale
+```{r}
+cpm <- cpm(x)
+lcpm <- cpm(x, log=TRUE)
+L <- mean(x$samples$lib.size) * 1e-6
+M <- median(x$samples$lib.size) * 1e-6
+c(L, M)
+summary(lcpm)
+```
+# 3.2 Removing genes that are lowly expressed
+```{r}
+table(rowSums(x$counts==0)==9)
+```
+# 0.67% of genes in this dataset have zero counts across all 60 samples.
+# The filterByExpr function in the edgeR package provides an automatic way to filter genes, while keeping as many genes as possible with worthwhile counts.
+```{r}
+keep.exprs <- filterByExpr(x, group=group)
+x <- x[keep.exprs,, keep.lib.sizes=FALSE]
+dim(x)
+```
+
+# 3.3 Normalising gene expression distributions
+```{r}
+x <- calcNormFactors(x, method = "TMM")
+x$samples$norm.factors
+x2 <- x
+x2$samples$norm.factors <- 1
+x2$counts[,1] <- ceiling(x2$counts[,1]*0.05)
+x2$counts[,2] <- x2$counts[,2]*5
+```
+# produce picture
+```{r}
+lcpm <- cpm(x2, log=TRUE)
+boxplot(lcpm, las=2, col=col, main="")
+title(main="A. Example: Unnormalised data",ylab="Log-cpm")
+x2 <- calcNormFactors(x2)  
+x2$samples$norm.factors
+lcpm <- cpm(x2, log=TRUE)
+boxplot(lcpm, las=2, col=col, main="")
+title(main="B. Example: Normalised data",ylab="Log-cpm")
+```
+# seems no much difference
+# 3.4 Unsupervised clustering of samples
+```{r}
+lcpm <- cpm(x, log=TRUE)
+plotMDS(lcpm, col = rep(c('red', 'blue'), each = 30))
+title(main="Sample groups")
+```
+# samples lungcancer16, lungcancer14, lungcancer23 produce a large deviation.
+
+# 4 Differential expression analysis
+# 4.1 Creating a design matrix and contrasts
+```{r}
+design <- model.matrix(~0+group)
+colnames(design) <- gsub("group", "", colnames(design))
+design
+contr.matrix <- makeContrasts(
+   LungcancervsNormal = lungcancer-normal, 
+   levels = colnames(design))
+contr.matrix
+```
+# 4.2 Removing heteroscedascity from count data,
+# Fitting linear models for comparisons of interest
+```{r}
+par(mfrow=c(1,2))
+v <- voom(x, design, plot=TRUE)
+v
+vfit <- lmFit(v, design)
+vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+efit <- eBayes(vfit)
+plotSA(efit, main="Final model: Mean-variance trend")
+```
+# 4.3 Examining the number of DE genes
+# Significance is defined using an adjusted p-value cutoff that is set at 5% by default.
+```{r}
+summary(decideTests(efit))
+```
+# For a stricter definition on significance, one may require log-fold-changes (log-FCs) to be above a minimum value. 
+```{r}
+tfit <- treat(vfit, lfc=1)
+dt <- decideTests(tfit)
+summary(dt)
+```
+# 4.4 Examining individual DE genes from top to bottom
+```{r}
+lungcancer.vs.normal <- topTreat(tfit, coef=1, n=Inf)
+head(lungcancer.vs.normal)
+```
+# 4.5 Useful graphical representations of differential expression results
+```{r}
+plotMD(tfit, column=1, status=dt[,1], main=colnames(tfit)[1], 
+       xlim=c(-8,13))
+```
+```{r}
+glMDPlot(tfit, coef=1, status=dt, main=colnames(tfit)[1],
+         side.main="ENSEMBL", counts=lcpm, groups=group, launch=FALSE)
+```
+##Unknown issue
+```{r}
+library(gplots)
+lungcancer.vs.normal.topgenes <- lungcancer.vs.normal$ENSEMBL[1:100]
+i <- which(v$genes$ENSEMBL %in% lungcancer.vs.normal.topgenes)
+mycol <- colorpanel(1000,"blue","white","red")
+heatmap.2(lcpm[i,], scale="row",
+   labRow=v$genes$SYMBOL[i], labCol=group, 
+   col=mycol, trace="none", density.info="none", 
+   margin=c(8,6), lhei=c(2,10), dendrogram="column")
+```
+
+
 
 
